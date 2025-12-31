@@ -39,7 +39,6 @@ readonly LOG_LEVEL_ERROR=3
 init_logging() {
     local log_file="${1:-}"
     if [[ -n "$log_file" ]]; then
-        LOG_FILE="$log_file"
         # Create log directory if it doesn't exist
         local log_dir
         log_dir=$(dirname "$log_file")
@@ -47,8 +46,8 @@ init_logging() {
             mkdir -p "$log_dir" 2>/dev/null || sudo mkdir -p "$log_dir"
         fi
         # Redirect all output to log file while preserving terminal output
-        exec > >(tee -a "$LOG_FILE") 2>&1
-        log_info "Logging initialized to: $LOG_FILE"
+        exec > >(tee -a "$log_file") 2>&1
+        log_info "Logging initialized to: $log_file"
     fi
 }
 
