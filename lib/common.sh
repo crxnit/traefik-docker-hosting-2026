@@ -124,6 +124,7 @@ setup_trap() {
 # Prompt user for input with default value
 # Usage: prompt_input "Enter value" "default_value" result_var
 # The result is stored in the variable named by the third argument
+# Note: Reads from /dev/tty to work when script is piped
 prompt_input() {
     local prompt="$1"
     local default="${2:-}"
@@ -131,10 +132,12 @@ prompt_input() {
     local input_value
 
     if [[ -n "$default" ]]; then
-        read -r -p "${prompt} [${default}]: " input_value
+        printf "%s [%s]: " "$prompt" "$default" >/dev/tty
+        read -r input_value </dev/tty
         input_value="${input_value:-$default}"
     else
-        read -r -p "${prompt}: " input_value
+        printf "%s: " "$prompt" >/dev/tty
+        read -r input_value </dev/tty
     fi
 
     # Use eval to set the variable in the caller's scope
@@ -147,7 +150,8 @@ confirm() {
     local prompt="${1:-Are you sure?}"
     local response
 
-    read -r -p "${prompt} (y/N): " response
+    printf "%s (y/N): " "$prompt" >/dev/tty
+    read -r response </dev/tty
     [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]
 }
 
@@ -158,8 +162,9 @@ prompt_secure() {
     local var_name="$2"
     local input_value
 
-    read -r -s -p "${prompt}: " input_value
-    echo  # New line after hidden input
+    printf "%s: " "$prompt" >/dev/tty
+    read -r -s input_value </dev/tty
+    echo >/dev/tty  # New line after hidden input
 
     # Use eval to set the variable in the caller's scope
     eval "$var_name=\"\$input_value\""
