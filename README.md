@@ -26,7 +26,7 @@ A secure, modular multi-client hosting platform using Traefik v3.6 as a reverse 
 ### One-Line Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/crxnit/traefik-docker-hosting-2026/main/get.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/crxnit/traefik-docker-hosting-2026/main/get.sh | sudo bash
 ```
 
 ### Manual Installation

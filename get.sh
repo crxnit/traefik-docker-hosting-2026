@@ -2,7 +2,7 @@
 # =============================================================================
 # Traefik Docker Hosting Platform - Quick Installer
 # =============================================================================
-# Usage: curl -fsSL https://raw.githubusercontent.com/crxnit/traefik-docker-hosting-2026/main/get.sh | sudo bash
+# Usage: curl -sSL https://raw.githubusercontent.com/crxnit/traefik-docker-hosting-2026/main/get.sh | sudo bash
 # =============================================================================
 
 set -euo pipefail
