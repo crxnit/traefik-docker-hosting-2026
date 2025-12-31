@@ -22,11 +22,50 @@ _DOCKER_LOADED=true
 # Docker Installation
 # =============================================================================
 
+# Sync system time to fix apt repository issues
+sync_system_time() {
+    log_info "Syncing system time..."
+
+    # Try to use timedatectl first (systemd)
+    if command -v timedatectl &>/dev/null; then
+        timedatectl set-ntp true 2>/dev/null || true
+        # Force immediate sync if timesyncd is available
+        if systemctl is-active --quiet systemd-timesyncd 2>/dev/null; then
+            systemctl restart systemd-timesyncd 2>/dev/null || true
+            sleep 2
+        fi
+    fi
+
+    # If ntpdate is available, use it for immediate sync
+    if command -v ntpdate &>/dev/null; then
+        ntpdate -u pool.ntp.org 2>/dev/null || true
+    # Try chronyd if available
+    elif command -v chronyd &>/dev/null; then
+        chronyc makestep 2>/dev/null || true
+    # Try sntp as fallback
+    elif command -v sntp &>/dev/null; then
+        sntp -S pool.ntp.org 2>/dev/null || true
+    # Last resort: try to install and use ntpdate
+    else
+        # Use --allow-releaseinfo-change to handle clock skew during package install
+        apt-get -o Acquire::Check-Valid-Until=false update -y 2>/dev/null || true
+        apt-get install -y ntpdate 2>/dev/null || true
+        if command -v ntpdate &>/dev/null; then
+            ntpdate -u pool.ntp.org 2>/dev/null || true
+        fi
+    fi
+
+    log_info "System time: $(date)"
+}
+
 # Install Docker on Debian/Ubuntu
 install_docker_debian() {
     local version="${1:-}"
 
     log_info "Installing Docker on Debian/Ubuntu..."
+
+    # Sync time first to avoid apt repository issues
+    sync_system_time
 
     # Remove old versions
     local old_packages=(docker.io docker-doc docker-compose podman-docker containerd runc)
@@ -36,25 +75,32 @@ install_docker_debian() {
         fi
     done
 
-    # Install prerequisites
-    apt-get update
+    # Detect OS for correct Docker repository
+    local os_id
+    os_id=$(get_os_info)
+
+    # Install prerequisites (use relaxed date checking in case time sync didn't fully work)
+    apt-get -o Acquire::Check-Valid-Until=false update
     apt-get install -y ca-certificates curl gnupg
 
     # Add Docker's GPG key
     install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+    curl -fsSL "https://download.docker.com/linux/${os_id}/gpg" -o /etc/apt/keyrings/docker.asc
     chmod a+r /etc/apt/keyrings/docker.asc
 
     # Add repository
     local codename
     codename=$(get_os_codename)
 
+    # Use correct Docker repository URL based on OS
+    local docker_url="https://download.docker.com/linux/${os_id}"
+
     cat > /etc/apt/sources.list.d/docker.list << EOF
-deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian ${codename} stable
+deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] ${docker_url} ${codename} stable
 EOF
 
     # Install Docker
-    apt-get update
+    apt-get -o Acquire::Check-Valid-Until=false update
 
     if [[ -n "$version" ]]; then
         apt-get install -y "docker-ce=$version" "docker-ce-cli=$version" containerd.io docker-buildx-plugin docker-compose-plugin
