@@ -1,5 +1,8 @@
 # Traefik Docker Hosting Platform
 
+[![Version](https://img.shields.io/github/v/release/crxnit/traefik-docker-hosting-2026)](https://github.com/crxnit/traefik-docker-hosting-2026/releases)
+[![License](https://img.shields.io/github/license/crxnit/traefik-docker-hosting-2026)](LICENSE)
+
 A secure, modular multi-client hosting platform using Traefik v3.6 as a reverse proxy with Docker Compose for isolated client deployments.
 
 ## Features
