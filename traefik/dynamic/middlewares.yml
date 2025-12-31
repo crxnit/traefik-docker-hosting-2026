@@ -1,0 +1,118 @@
+# =============================================================================
+# Reusable Middleware Chains
+# =============================================================================
+
+http:
+  middlewares:
+    # -------------------------------------------------------------------------
+    # Standard Web Application Chain
+    # Includes: security headers, compression, rate limiting
+    # -------------------------------------------------------------------------
+    chain-web-standard:
+      chain:
+        middlewares:
+          - security-headers@file
+          - gzip-compress@file
+          - rate-limit@file
+
+    # -------------------------------------------------------------------------
+    # API Application Chain
+    # Includes: security headers, rate limiting (stricter)
+    # -------------------------------------------------------------------------
+    chain-api:
+      chain:
+        middlewares:
+          - security-headers@file
+          - rate-limit-api@file
+
+    # -------------------------------------------------------------------------
+    # Admin Application Chain
+    # Includes: IP allowlist, basic auth, security headers
+    # -------------------------------------------------------------------------
+    chain-admin:
+      chain:
+        middlewares:
+          - admin-ip-allowlist@file
+          - dashboard-auth@file
+          - security-headers@file
+
+    # -------------------------------------------------------------------------
+    # Public Static Assets Chain
+    # Includes: compression, caching headers
+    # -------------------------------------------------------------------------
+    chain-static:
+      chain:
+        middlewares:
+          - gzip-compress@file
+          - cache-headers@file
+
+    # -------------------------------------------------------------------------
+    # API Rate Limiting (stricter)
+    # -------------------------------------------------------------------------
+    rate-limit-api:
+      rateLimit:
+        average: 50
+        burst: 25
+        period: 1s
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    # -------------------------------------------------------------------------
+    # Caching Headers for Static Assets
+    # -------------------------------------------------------------------------
+    cache-headers:
+      headers:
+        customResponseHeaders:
+          Cache-Control: "public, max-age=31536000, immutable"
+
+    # -------------------------------------------------------------------------
+    # CORS Middleware (permissive - customize for production)
+    # -------------------------------------------------------------------------
+    cors-permissive:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        accessControlAllowHeaders:
+          - "*"
+        accessControlAllowOriginList:
+          - "*"
+        accessControlMaxAge: 86400
+        addVaryHeader: true
+
+    # -------------------------------------------------------------------------
+    # CORS Middleware (restrictive - customize domains)
+    # -------------------------------------------------------------------------
+    cors-restrictive:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        accessControlAllowHeaders:
+          - Authorization
+          - Content-Type
+        accessControlAllowOriginList:
+          - "https://example.com"
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 86400
+        addVaryHeader: true
+
+    # -------------------------------------------------------------------------
+    # Retry Middleware
+    # -------------------------------------------------------------------------
+    retry-default:
+      retry:
+        attempts: 3
+        initialInterval: 100ms
+
+    # -------------------------------------------------------------------------
+    # Circuit Breaker
+    # -------------------------------------------------------------------------
+    circuit-breaker:
+      circuitBreaker:
+        expression: "ResponseCodeRatio(500, 600, 0, 600) > 0.30"

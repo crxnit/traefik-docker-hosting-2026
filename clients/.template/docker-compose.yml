@@ -1,0 +1,203 @@
+# =============================================================================
+# Client Application Stack Template
+# =============================================================================
+# This template creates a complete client deployment with:
+# - Web application container
+# - PostgreSQL database
+# - Proper security settings and health checks
+#
+# Copy this directory to /opt/clients/<client_name> and customize
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Web Application
+  # ===========================================================================
+  web:
+    image: ${APP_IMAGE:-node:22-alpine}
+    container_name: ${CLIENT_NAME}-web
+    restart: always
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    user: "1000:1000"
+    # Application port (internal only)
+    expose:
+      - "${APP_PORT:-8080}"
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - APP_PORT=${APP_PORT:-8080}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${CLIENT_NAME}-db:5432/${POSTGRES_DB}
+    # Volumes for application code and temp files
+    volumes:
+      - ./app:/app:ro
+      - app-tmp:/tmp
+      - app-cache:/app/.cache
+    # Network connections
+    networks:
+      - traefik-public
+      - backend
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${APP_PORT:-8080}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Wait for database
+    depends_on:
+      db:
+        condition: service_healthy
+    # Traefik labels for routing
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${CLIENT_NAME}.rule=Host(`${CLIENT_DOMAIN}`)"
+      - "traefik.http.routers.${CLIENT_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${CLIENT_NAME}.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${CLIENT_NAME}.middlewares=chain-web-standard@file"
+      - "traefik.http.services.${CLIENT_NAME}.loadbalancer.server.port=${APP_PORT:-8080}"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ===========================================================================
+  # PostgreSQL Database
+  # ===========================================================================
+  db:
+    image: postgres:17-alpine
+    container_name: ${CLIENT_NAME}-db
+    restart: always
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+      - FOWNER
+    # Environment from secrets
+    environment:
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - POSTGRES_DB=${POSTGRES_DB}
+    # Secrets
+    secrets:
+      - postgres_user
+      - postgres_password
+    # Persistent data
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    # Internal network only
+    networks:
+      - backend
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$(cat /run/secrets/postgres_user) -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ===========================================================================
+  # Redis Cache (Optional)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ${CLIENT_NAME}-redis
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    user: "999:999"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    profiles:
+      - with-cache
+
+# =============================================================================
+# Secrets
+# =============================================================================
+secrets:
+  postgres_user:
+    file: ./secrets/postgres_user.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  traefik-public:
+    external: true
+  backend:
+    driver: bridge
+    internal: true
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  app-tmp:
+    driver: local
+  app-cache:
+    driver: local

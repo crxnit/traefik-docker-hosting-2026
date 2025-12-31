@@ -1,0 +1,156 @@
+# =============================================================================
+# Traefik v3.6 Static Configuration
+# =============================================================================
+# This file contains the static configuration that requires Traefik restart.
+# Dynamic configuration (routers, services, middlewares) goes in ./dynamic/
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+log:
+  level: INFO
+  filePath: "/var/log/traefik/traefik.log"
+  format: json
+  # Log rotation is handled by Docker or external tools
+
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  format: json
+  bufferingSize: 100
+  filters:
+    statusCodes:
+      - "200-299"
+      - "400-599"
+    retryAttempts: true
+    minDuration: "10ms"
+  fields:
+    defaultMode: keep
+    names:
+      ClientUsername: drop
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        Authorization: drop
+        Cookie: drop
+
+# =============================================================================
+# API and Dashboard
+# =============================================================================
+api:
+  dashboard: true
+  insecure: false
+  debug: false
+
+# Ping endpoint for health checks
+ping:
+  entryPoint: traefik
+
+# =============================================================================
+# Entry Points
+# =============================================================================
+entryPoints:
+  # Internal management endpoint (dashboard, ping, metrics)
+  traefik:
+    address: ":8082"
+
+  # HTTP endpoint (redirects to HTTPS)
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+    # Trusted proxies for X-Forwarded-* headers
+    forwardedHeaders:
+      insecure: false
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.0.0/8"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+
+  # HTTPS endpoint with HTTP/3 support
+  websecure:
+    address: ":443"
+    http3: {}
+    http:
+      tls:
+        certResolver: letsencrypt
+        domains: []
+      middlewares:
+        - security-headers@file
+    # Connection timeouts
+    transport:
+      respondingTimeouts:
+        readTimeout: 30s
+        writeTimeout: 30s
+        idleTimeout: 180s
+      lifeCycle:
+        requestAcceptGraceTimeout: 5s
+        graceTimeOut: 10s
+    forwardedHeaders:
+      insecure: false
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.0.0/8"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+
+# =============================================================================
+# Providers
+# =============================================================================
+providers:
+  # Docker provider (via socket proxy for security)
+  docker:
+    # Use socket proxy instead of direct socket access
+    # endpoint: "tcp://docker-socket-proxy:2375"
+    # Fallback to direct socket (less secure but simpler)
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-public
+    watch: true
+
+  # File provider for dynamic configuration
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+# =============================================================================
+# Certificate Resolvers (Let's Encrypt)
+# =============================================================================
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "${ACME_EMAIL}"
+      storage: "/etc/traefik/acme/acme.json"
+      # Production server
+      caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      # Staging server (uncomment for testing)
+      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      keyType: EC384
+      httpChallenge:
+        entryPoint: web
+
+  # Staging resolver for testing
+  letsencrypt-staging:
+    acme:
+      email: "${ACME_EMAIL}"
+      storage: "/etc/traefik/acme/acme-staging.json"
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      keyType: EC384
+      httpChallenge:
+        entryPoint: web
+
+# =============================================================================
+# Experimental Features
+# =============================================================================
+experimental:
+  # HTTP/3 is now stable in v3.6
+  http3: true

@@ -1,0 +1,37 @@
+# =============================================================================
+# Traefik Dashboard Configuration
+# =============================================================================
+
+http:
+  routers:
+    # -------------------------------------------------------------------------
+    # Traefik Dashboard Router
+    # -------------------------------------------------------------------------
+    traefik-dashboard:
+      rule: "Host(`${TRAEFIK_DASHBOARD_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      entryPoints:
+        - websecure
+      service: api@internal
+      middlewares:
+        - dashboard-auth@file
+        - security-headers@file
+      tls:
+        certResolver: letsencrypt
+
+    # Dashboard redirect (root to /dashboard/)
+    traefik-dashboard-redirect:
+      rule: "Host(`${TRAEFIK_DASHBOARD_DOMAIN}`) && Path(`/`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - dashboard-redirect@file
+      service: api@internal
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    dashboard-redirect:
+      redirectRegex:
+        regex: "^https://([^/]+)/?$"
+        replacement: "https://${1}/dashboard/"
+        permanent: true

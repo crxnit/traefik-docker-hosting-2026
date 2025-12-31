@@ -1,0 +1,190 @@
+# =============================================================================
+# Security Middlewares and Configuration
+# =============================================================================
+
+http:
+  # ===========================================================================
+  # Security Middlewares
+  # ===========================================================================
+  middlewares:
+    # -------------------------------------------------------------------------
+    # Security Headers Middleware
+    # -------------------------------------------------------------------------
+    security-headers:
+      headers:
+        # Prevent clickjacking
+        frameDeny: true
+        # Prevent MIME type sniffing
+        contentTypeNosniff: true
+        # Enable XSS protection
+        browserXssFilter: true
+        # Referrer policy
+        referrerPolicy: "strict-origin-when-cross-origin"
+        # Permissions policy
+        permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=()"
+        # Content Security Policy (adjust as needed)
+        contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+        # HSTS (be careful in production)
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        # Custom headers
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow"
+          Server: ""
+
+    # -------------------------------------------------------------------------
+    # Rate Limiting Middleware
+    # -------------------------------------------------------------------------
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    # -------------------------------------------------------------------------
+    # IP Allowlist for Admin Access
+    # -------------------------------------------------------------------------
+    admin-ip-allowlist:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+          # Add your admin IPs here
+          # - "YOUR_ADMIN_IP/32"
+
+    # -------------------------------------------------------------------------
+    # Basic Authentication
+    # -------------------------------------------------------------------------
+    # Generate password: echo $(htpasswd -nB user) | sed -e s/\\$/\\$\\$/g
+    dashboard-auth:
+      basicAuth:
+        users:
+          # Default: admin/changeme (CHANGE IN PRODUCTION!)
+          - "admin:$$2y$$10$$placeholder.hash.here"
+        removeHeader: true
+
+    # -------------------------------------------------------------------------
+    # Compression Middleware
+    # -------------------------------------------------------------------------
+    gzip-compress:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"
+        minResponseBodyBytes: 1024
+
+    # -------------------------------------------------------------------------
+    # Error Pages Middleware
+    # -------------------------------------------------------------------------
+    error-pages:
+      errors:
+        status:
+          - "500-599"
+        query: "/{status}.html"
+        service: error-pages@docker
+
+    # -------------------------------------------------------------------------
+    # Redirect Schemes
+    # -------------------------------------------------------------------------
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    # -------------------------------------------------------------------------
+    # Strip Prefix (for path-based routing)
+    # -------------------------------------------------------------------------
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api"
+
+  # ===========================================================================
+  # Catch-All Security Router (HTTP)
+  # ===========================================================================
+  routers:
+    # Catch-all to deny unmatched requests (lowest priority)
+    security-catchall-http:
+      rule: "HostRegexp(`{host:.+}`)"
+      entryPoints:
+        - web
+      priority: 1
+      middlewares:
+        - security-deny@file
+      service: deny-service@file
+
+    security-catchall-https:
+      rule: "HostRegexp(`{host:.+}`)"
+      entryPoints:
+        - websecure
+      priority: 1
+      tls: {}
+      middlewares:
+        - security-deny@file
+      service: deny-service@file
+
+  # ===========================================================================
+  # Security Deny Middleware (for catch-all)
+  # ===========================================================================
+  middlewares:
+    security-deny:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+
+  # ===========================================================================
+  # Deny Service (returns 403)
+  # ===========================================================================
+  services:
+    deny-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:1"
+
+# =============================================================================
+# TCP Security (Blackhole for unmatched SNI)
+# =============================================================================
+tcp:
+  routers:
+    tcp-catchall:
+      rule: "HostSNI(`*`)"
+      entryPoints:
+        - websecure
+      priority: 1
+      service: tcp-blackhole@file
+
+  services:
+    tcp-blackhole:
+      loadBalancer:
+        servers:
+          - address: "127.0.0.1:1"
+
+# =============================================================================
+# TLS Configuration
+# =============================================================================
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      maxVersion: VersionTLS13
+      sniStrict: true
+      cipherSuites:
+        # TLS 1.3 ciphers (automatically selected)
+        # TLS 1.2 ciphers (strong only)
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      curvePreferences:
+        - X25519
+        - CurveP384
+        - CurveP256
+
+    # Modern TLS 1.3 only option
+    modern:
+      minVersion: VersionTLS13
+      sniStrict: true
