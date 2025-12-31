@@ -157,6 +157,22 @@ create_directory_structure() {
 copy_files() {
     log_info "Copying configuration files..."
 
+    # Check if we're already running from the install directory
+    local project_real install_real
+    project_real=$(cd "$PROJECT_ROOT" && pwd -P)
+    install_real=$(cd "$INSTALL_DIR" 2>/dev/null && pwd -P || echo "$INSTALL_DIR")
+
+    if [[ "$project_real" == "$install_real" ]]; then
+        log_info "Already running from install directory, skipping file copy"
+        # Just ensure scripts are executable
+        for script in new-client.sh client-manager.sh backup.sh; do
+            if [[ -f "$INSTALL_DIR/${script}" ]]; then
+                chmod +x "$INSTALL_DIR/${script}"
+            fi
+        done
+        return 0
+    fi
+
     # Copy library files
     cp -r "${PROJECT_ROOT}/lib/"* "$INSTALL_DIR/lib/"
 
