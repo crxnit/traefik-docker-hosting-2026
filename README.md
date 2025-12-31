@@ -23,29 +23,33 @@ A secure, modular multi-client hosting platform using Traefik v3.6 as a reverse 
 
 ## Quick Start
 
-### 1. Clone and Install
+### One-Line Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/crxnit/traefik-docker-hosting-2026/main/get.sh | sudo bash
+```
+
+### Manual Installation
 
 ```bash
 git clone https://github.com/crxnit/traefik-docker-hosting-2026.git
 cd traefik-docker-hosting-2026
-
-# Run the installation script
 sudo ./setup/install.sh
 ```
 
-### 2. Configure DNS
+### Configure DNS
 
 Point your domains to the server's IP address:
 - `traefik.yourdomain.com` - Traefik dashboard
 - `app.yourdomain.com` - Client applications
 
-### 3. Add a Client
+### Add a Client
 
 ```bash
 sudo ./new-client.sh
 ```
 
-### 4. Manage Clients
+### Manage Clients
 
 ```bash
 sudo ./client-manager.sh
