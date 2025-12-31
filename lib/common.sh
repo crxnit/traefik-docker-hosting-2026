@@ -123,17 +123,22 @@ setup_trap() {
 
 # Prompt user for input with default value
 # Usage: prompt_input "Enter value" "default_value" result_var
+# The result is stored in the variable named by the third argument
 prompt_input() {
     local prompt="$1"
     local default="${2:-}"
-    local -n result_ref="$3"
+    local var_name="$3"
+    local input_value
 
     if [[ -n "$default" ]]; then
-        read -r -p "${prompt} [${default}]: " result_ref
-        result_ref="${result_ref:-$default}"
+        read -r -p "${prompt} [${default}]: " input_value
+        input_value="${input_value:-$default}"
     else
-        read -r -p "${prompt}: " result_ref
+        read -r -p "${prompt}: " input_value
     fi
+
+    # Use eval to set the variable in the caller's scope
+    eval "$var_name=\"\$input_value\""
 }
 
 # Prompt for yes/no confirmation
@@ -150,10 +155,14 @@ confirm() {
 # Usage: prompt_secure "Enter password" result_var
 prompt_secure() {
     local prompt="$1"
-    local -n result_ref="$2"
+    local var_name="$2"
+    local input_value
 
-    read -r -s -p "${prompt}: " result_ref
+    read -r -s -p "${prompt}: " input_value
     echo  # New line after hidden input
+
+    # Use eval to set the variable in the caller's scope
+    eval "$var_name=\"\$input_value\""
 }
 
 # =============================================================================
