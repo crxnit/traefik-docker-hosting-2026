@@ -4,6 +4,12 @@
 # =============================================================================
 # shellcheck shell=bash
 
+# Guard against multiple sourcing
+if [[ -n "${_COMMON_LOADED:-}" ]]; then
+    return 0
+fi
+_COMMON_LOADED=true
+
 # Strict mode - fail on errors, undefined variables, and pipe failures
 set -euo pipefail
 

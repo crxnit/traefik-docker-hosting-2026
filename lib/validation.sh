@@ -4,12 +4,19 @@
 # =============================================================================
 # shellcheck shell=bash
 
+# Guard against multiple sourcing
+if [[ -n "${_VALIDATION_LOADED:-}" ]]; then
+    return 0
+fi
+
 # Source common functions if not already loaded
 if [[ -z "${_COMMON_LOADED:-}" ]]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     # shellcheck source=lib/common.sh
     source "${SCRIPT_DIR}/common.sh"
 fi
+
+_VALIDATION_LOADED=true
 
 # =============================================================================
 # Domain Validation
@@ -371,5 +378,3 @@ validate_docker_network() {
     return 0
 }
 
-# Mark as loaded
-_VALIDATION_LOADED=true

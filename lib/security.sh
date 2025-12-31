@@ -4,12 +4,19 @@
 # =============================================================================
 # shellcheck shell=bash
 
+# Guard against multiple sourcing
+if [[ -n "${_SECURITY_LOADED:-}" ]]; then
+    return 0
+fi
+
 # Source common functions if not already loaded
 if [[ -z "${_COMMON_LOADED:-}" ]]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     # shellcheck source=lib/common.sh
     source "${SCRIPT_DIR}/common.sh"
 fi
+
+_SECURITY_LOADED=true
 
 # =============================================================================
 # SSH Hardening
@@ -460,5 +467,3 @@ EOF
     log_info "Auditd configured"
 }
 
-# Mark as loaded
-_SECURITY_LOADED=true
