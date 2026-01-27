@@ -101,13 +101,21 @@ http:
         prefixes:
           - "/api"
 
+    # -------------------------------------------------------------------------
+    # Security Deny Middleware (for catch-all routers)
+    # -------------------------------------------------------------------------
+    security-deny:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+
   # ===========================================================================
   # Catch-All Security Router (HTTP)
   # ===========================================================================
   routers:
     # Catch-all to deny unmatched requests (lowest priority)
     security-catchall-http:
-      rule: "HostRegexp(`{host:.+}`)"
+      rule: "HostRegexp(`.+`)"
       entryPoints:
         - web
       priority: 1
@@ -116,7 +124,7 @@ http:
       service: deny-service@file
 
     security-catchall-https:
-      rule: "HostRegexp(`{host:.+}`)"
+      rule: "HostRegexp(`.+`)"
       entryPoints:
         - websecure
       priority: 1
@@ -124,15 +132,6 @@ http:
       middlewares:
         - security-deny@file
       service: deny-service@file
-
-  # ===========================================================================
-  # Security Deny Middleware (for catch-all)
-  # ===========================================================================
-  middlewares:
-    security-deny:
-      ipAllowList:
-        sourceRange:
-          - "127.0.0.1/32"
 
   # ===========================================================================
   # Deny Service (returns 403)
