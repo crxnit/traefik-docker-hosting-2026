@@ -1,0 +1,21 @@
+# =============================================================================
+# CrowdSec Traefik Log Acquisition
+# =============================================================================
+# Parses Traefik access logs to detect malicious patterns and behaviors.
+# Works in conjunction with the crowdsecurity/traefik collection.
+#
+# Detects:
+# - Brute force attacks
+# - Credential stuffing
+# - Path enumeration
+# - Scanner/bot activity
+# - Suspicious user agents
+# =============================================================================
+
+filenames:
+  - /var/log/traefik/access.log
+
+labels:
+  type: traefik
+
+source: file

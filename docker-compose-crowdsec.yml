@@ -1,0 +1,259 @@
+# =============================================================================
+# Traefik Docker Hosting Platform - With CrowdSec AppSec/WAF
+# =============================================================================
+# This compose file deploys the core infrastructure with CrowdSec protection:
+# - Traefik reverse proxy with SSL termination
+# - Docker Socket Proxy for enhanced security
+# - CrowdSec Security Engine with AppSec/WAF
+# - Optional: Whoami test service
+#
+# Usage:
+#   docker compose -f docker-compose-crowdsec.yml up -d
+#   docker compose -f docker-compose-crowdsec.yml logs -f traefik crowdsec
+#
+# First-time setup:
+#   1. Start CrowdSec first to generate API key:
+#      docker compose -f docker-compose-crowdsec.yml up -d crowdsec
+#   2. Generate bouncer API key:
+#      docker exec crowdsec cscli bouncers add traefik-bouncer
+#   3. Add key to .env file as CROWDSEC_BOUNCER_API_KEY
+#   4. Restart the full stack:
+#      docker compose -f docker-compose-crowdsec.yml up -d
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Docker Socket Proxy (Security Layer)
+  # ===========================================================================
+  # Provides secure, read-only access to Docker API
+  # Traefik connects to this instead of direct socket access
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: docker-socket-proxy
+    restart: always
+    privileged: true
+    environment:
+      # Read-only access to containers, services, networks
+      CONTAINERS: 1
+      SERVICES: 1
+      TASKS: 1
+      NETWORKS: 1
+      # Deny access to sensitive endpoints
+      NODES: 0
+      SECRETS: 0
+      CONFIGS: 0
+      VOLUMES: 0
+      IMAGES: 0
+      INFO: 0
+      POST: 0
+      BUILD: 0
+      COMMIT: 0
+      EXEC: 0
+      AUTH: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2375/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+
+  # ===========================================================================
+  # CrowdSec Security Engine
+  # ===========================================================================
+  # Provides IP reputation and AppSec/WAF protection
+  # LAPI runs on port 8080, AppSec on port 7422
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: always
+    environment:
+      # Collections to install on startup
+      COLLECTIONS: >-
+        crowdsecurity/traefik
+        crowdsecurity/http-cve
+        crowdsecurity/appsec-virtual-patching
+        crowdsecurity/appsec-generic-rules
+      # Bouncer API key (set after first run, see setup instructions above)
+      BOUNCER_KEY_traefik: ${CROWDSEC_BOUNCER_API_KEY:-}
+      # Optional: Enroll in CrowdSec Console for web dashboard
+      # ENROLL_KEY: ${CROWDSEC_ENROLL_KEY:-}
+      # ENROLL_INSTANCE_NAME: traefik-hosting
+    volumes:
+      # CrowdSec configuration persistence
+      - crowdsec-config:/etc/crowdsec
+      # CrowdSec database persistence
+      - crowdsec-data:/var/lib/crowdsec/data
+      # AppSec acquisition configuration
+      - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d:ro
+      # Access to Traefik logs for parsing
+      - ./traefik/logs:/var/log/traefik:ro
+    networks:
+      - docker-proxy
+    healthcheck:
+      test: ["CMD", "cscli", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # Traefik - Edge Router, Load Balancer, SSL Terminator
+  # ===========================================================================
+  traefik:
+    image: traefik:v3.6.6
+    container_name: traefik
+    restart: always
+    depends_on:
+      docker-socket-proxy:
+        condition: service_healthy
+      crowdsec:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    user: "1000:1000"
+    working_dir: /etc/traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL}
+      - TRAEFIK_DASHBOARD_DOMAIN=${TRAEFIK_DASHBOARD_DOMAIN}
+      # CrowdSec bouncer API key for plugin
+      - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_API_KEY}
+    volumes:
+      # Static configuration (must include CrowdSec plugin)
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # Dynamic configuration directory
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      # ACME certificates (read-write for Let's Encrypt)
+      - ./traefik/acme:/etc/traefik/acme
+      # Logs directory
+      - ./traefik/logs:/var/log/traefik
+      # Temp directory for read-only root filesystem
+      - traefik-tmp:/tmp
+    networks:
+      - docker-proxy
+      - traefik-public
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      # Internal dashboard routing is defined in dynamic config
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ===========================================================================
+  # Whoami - Test Service (Optional)
+  # ===========================================================================
+  # Use chain-web-crowdsec@file middleware for CrowdSec protection
+  whoami:
+    image: traefik/whoami:latest
+    container_name: whoami
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    user: "65534:65534"  # nobody user
+    networks:
+      - traefik-public
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`${WHOAMI_DOMAIN}`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+      # Use CrowdSec-enabled middleware chain
+      - "traefik.http.routers.whoami.middlewares=chain-web-crowdsec@file"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 32M
+        reservations:
+          cpus: '0.05'
+          memory: 8M
+    profiles:
+      - testing
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  # Internal network for Docker socket proxy and CrowdSec
+  docker-proxy:
+    driver: bridge
+    internal: true
+
+  # Public-facing network for Traefik and services
+  traefik-public:
+    driver: bridge
+    # Not internal - allows external traffic
+
+  # Backend network for internal service communication
+  backend:
+    driver: bridge
+    internal: true
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  traefik-tmp:
+    driver: local
+  crowdsec-config:
+    driver: local
+  crowdsec-data:
+    driver: local

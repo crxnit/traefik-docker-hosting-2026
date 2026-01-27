@@ -23,6 +23,19 @@ The integration uses the [CrowdSec Bouncer Traefik Plugin](https://github.com/ma
 
 ---
 
+## Quick Start
+
+A complete Docker Compose file with CrowdSec is provided:
+
+```bash
+# Use the CrowdSec-enabled compose file
+docker compose -f docker-compose-crowdsec.yml up -d
+```
+
+The acquisition configuration files are included in `crowdsec/acquis.d/`.
+
+---
+
 ## Setup Steps
 
 ### Step 1: Enable the CrowdSec Plugin in Traefik
@@ -46,7 +59,7 @@ experimental:
 
 ### Step 2: Add CrowdSec Service to Docker Compose
 
-Add the following service to `docker-compose.yml`:
+Use `docker-compose-crowdsec.yml` which includes the CrowdSec service, or add the following to your existing `docker-compose.yml`:
 
 ```yaml
 services:
@@ -119,15 +132,11 @@ services:
 
 ---
 
-### Step 3: Create CrowdSec Acquisition Configuration
+### Step 3: CrowdSec Acquisition Configuration
 
-Create the directory and configuration file:
+The acquisition configuration files are provided in `crowdsec/acquis.d/`. If you need to customize them, here are the contents:
 
-```bash
-mkdir -p crowdsec/acquis.d
-```
-
-Create `crowdsec/acquis.d/appsec.yaml`:
+**`crowdsec/acquis.d/appsec.yaml`:**
 
 ```yaml
 # AppSec Component Configuration
@@ -174,7 +183,13 @@ CROWDSEC_BOUNCER_API_KEY=your-api-key-here
 Start CrowdSec first (without the API key):
 
 ```bash
-docker compose up -d crowdsec
+docker compose -f docker-compose-crowdsec.yml up -d crowdsec
+```
+
+Wait for CrowdSec to initialize (check logs):
+
+```bash
+docker compose -f docker-compose-crowdsec.yml logs -f crowdsec
 ```
 
 Generate the bouncer API key:
@@ -199,10 +214,11 @@ Update `.env` with the generated key:
 CROWDSEC_BOUNCER_API_KEY=aBcDeFgHiJkLmNoPqRsTuVwXyZ123456
 ```
 
-Restart the stack:
+Restart the full stack:
 
 ```bash
-docker compose down && docker compose up -d
+docker compose -f docker-compose-crowdsec.yml down
+docker compose -f docker-compose-crowdsec.yml up -d
 ```
 
 ---

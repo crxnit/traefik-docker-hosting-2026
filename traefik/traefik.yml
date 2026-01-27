@@ -9,6 +9,19 @@ global:
   sendAnonymousUsage: false
 
 # =============================================================================
+# CrowdSec AppSec/WAF Plugin (Optional)
+# =============================================================================
+# Uncomment to enable CrowdSec integration for IP reputation and WAF protection.
+# Requires: CrowdSec service running (see docker-compose-crowdsec.yml)
+# Documentation: traefik/dynamic/crowdsec.md
+#
+# experimental:
+#   plugins:
+#     bouncer:
+#       moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+#       version: v1.4.7
+
+# =============================================================================
 # Logging Configuration
 # =============================================================================
 log:
