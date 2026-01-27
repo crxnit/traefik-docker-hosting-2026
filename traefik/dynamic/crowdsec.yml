@@ -1,0 +1,109 @@
+# =============================================================================
+# CrowdSec AppSec/WAF Configuration
+# =============================================================================
+# This file defines middlewares for CrowdSec integration with Traefik.
+#
+# PREREQUISITES:
+# 1. Enable the CrowdSec plugin in traefik.yml (static config)
+# 2. Deploy the CrowdSec service (see crowdsec.md for instructions)
+# 3. Generate a bouncer API key and update crowdsecLapiKey below
+#
+# See crowdsec.md for complete setup instructions.
+# =============================================================================
+
+http:
+  middlewares:
+    # -------------------------------------------------------------------------
+    # CrowdSec Bouncer with AppSec/WAF (Full Protection)
+    # -------------------------------------------------------------------------
+    # Combines IP reputation blocking with application-layer WAF protection.
+    # Use this for maximum security on public-facing applications.
+    crowdsec-appsec:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: INFO
+          crowdsecMode: stream
+          # LAPI connection (IP reputation)
+          crowdsecLapiKey: "${CROWDSEC_BOUNCER_API_KEY}"
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiScheme: http
+          # AppSec/WAF settings
+          crowdsecAppsecEnabled: true
+          crowdsecAppsecHost: crowdsec:7422
+          crowdsecAppsecFailureBlock: true
+          crowdsecAppsecUnreachableBlock: true
+          crowdsecAppsecBodyLimit: 10485760  # 10MB
+          # Streaming mode settings
+          updateIntervalSeconds: 60
+          defaultDecisionSeconds: 60
+
+    # -------------------------------------------------------------------------
+    # CrowdSec Bouncer - IP Reputation Only
+    # -------------------------------------------------------------------------
+    # Lighter weight option that only checks IP reputation without WAF.
+    # Use for internal services or when WAF overhead is not desired.
+    crowdsec-ip-only:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: INFO
+          crowdsecMode: stream
+          crowdsecLapiKey: "${CROWDSEC_BOUNCER_API_KEY}"
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiScheme: http
+          crowdsecAppsecEnabled: false
+          updateIntervalSeconds: 60
+          defaultDecisionSeconds: 60
+
+    # -------------------------------------------------------------------------
+    # CrowdSec AppSec with Captcha Remediation
+    # -------------------------------------------------------------------------
+    # Instead of blocking, challenges suspicious IPs with a captcha.
+    # Useful for reducing false positives on high-traffic sites.
+    crowdsec-captcha:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: INFO
+          crowdsecMode: stream
+          crowdsecLapiKey: "${CROWDSEC_BOUNCER_API_KEY}"
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiScheme: http
+          crowdsecAppsecEnabled: true
+          crowdsecAppsecHost: crowdsec:7422
+          # Captcha settings (configure provider credentials)
+          captchaProvider: turnstile  # or: hcaptcha, recaptcha
+          captchaSiteKey: "${CROWDSEC_CAPTCHA_SITE_KEY}"
+          captchaSecretKey: "${CROWDSEC_CAPTCHA_SECRET_KEY}"
+          captchaGracePeriodSeconds: 1800  # 30 minutes
+
+    # -------------------------------------------------------------------------
+    # Middleware Chains with CrowdSec
+    # -------------------------------------------------------------------------
+
+    # Standard web chain + CrowdSec WAF
+    chain-web-crowdsec:
+      chain:
+        middlewares:
+          - crowdsec-appsec@file
+          - security-headers@file
+          - gzip-compress@file
+          - rate-limit@file
+
+    # API chain + CrowdSec WAF
+    chain-api-crowdsec:
+      chain:
+        middlewares:
+          - crowdsec-appsec@file
+          - security-headers@file
+          - rate-limit-api@file
+
+    # Admin chain + CrowdSec (IP reputation only, already has IP allowlist)
+    chain-admin-crowdsec:
+      chain:
+        middlewares:
+          - crowdsec-ip-only@file
+          - admin-ip-allowlist@file
+          - dashboard-auth@file
+          - security-headers@file
