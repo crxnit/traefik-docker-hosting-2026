@@ -123,7 +123,7 @@ backup_client_db() {
     log_info "Backing up database for: $client_name"
 
     # Get credentials from secrets
-    local pg_user pg_pass
+    local pg_user
     if [[ -f "$client_path/secrets/postgres_user.txt" ]]; then
         pg_user=$(cat "$client_path/secrets/postgres_user.txt")
     else
@@ -274,7 +274,7 @@ restore_client_db() {
 
     # Extract client name from filename (format: clientname_db_timestamp.sql.gz)
     local client_name
-    client_name=$(echo "$filename" | sed 's/_db_[0-9]*_[0-9]*\.sql\.gz$//')
+    client_name="${filename%%_db_[0-9]*}"
 
     local client_path="${CLIENTS_ROOT}/${client_name}"
 

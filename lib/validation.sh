@@ -253,9 +253,11 @@ generate_password() {
     local password
     password=$(LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' < /dev/urandom | head -c "$length")
 
-    # Ensure at least one of each type
+    # Ensure at least one of each type (using explicit A-Z/a-z for ASCII-only passwords)
     local upper lower digit special
+    # shellcheck disable=SC2018,SC2019
     upper=$(LC_ALL=C tr -dc 'A-Z' < /dev/urandom | head -c 1)
+    # shellcheck disable=SC2018,SC2019
     lower=$(LC_ALL=C tr -dc 'a-z' < /dev/urandom | head -c 1)
     digit=$(LC_ALL=C tr -dc '0-9' < /dev/urandom | head -c 1)
     special=$(LC_ALL=C tr -dc '!@#$%^&*()_+-=' < /dev/urandom | head -c 1)

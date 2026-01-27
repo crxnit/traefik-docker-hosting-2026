@@ -235,7 +235,8 @@ backup_file() {
     local backup_dir="${2:-$(dirname "$file")}"
     local timestamp
     timestamp=$(date '+%Y%m%d_%H%M%S')
-    local backup_file="${backup_dir}/$(basename "$file").bak.${timestamp}"
+    local backup_file
+    backup_file="${backup_dir}/$(basename "$file").bak.${timestamp}"
 
     if [[ -f "$file" ]]; then
         cp "$file" "$backup_file"

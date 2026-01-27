@@ -26,7 +26,6 @@ source "${SCRIPT_DIR}/lib/validation.sh"
 # Configuration
 # =============================================================================
 readonly CLIENTS_ROOT="${SCRIPT_DIR}/clients"
-readonly TEMPLATE_DIR="${CLIENTS_ROOT}/.template"
 readonly DEFAULT_APP_PORT="8080"
 
 # =============================================================================

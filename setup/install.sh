@@ -28,7 +28,8 @@ source "${PROJECT_ROOT}/lib/docker.sh"
 # Configuration
 # =============================================================================
 readonly INSTALL_DIR="${INSTALL_DIR:-/opt/traefik-hosting}"
-readonly LOG_FILE="/var/log/traefik-hosting-install_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="/var/log/traefik-hosting-install_$(date +%Y%m%d_%H%M%S).log"
+readonly LOG_FILE
 
 # =============================================================================
 # Functions

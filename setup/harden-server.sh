@@ -29,7 +29,8 @@ source "${PROJECT_ROOT}/lib/security.sh"
 # =============================================================================
 # Configuration
 # =============================================================================
-readonly LOG_FILE="/var/log/server_hardening_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="/var/log/server_hardening_$(date +%Y%m%d_%H%M%S).log"
+readonly LOG_FILE
 
 # =============================================================================
 # Functions
@@ -64,6 +65,7 @@ check_prerequisites() {
     log_info "Prerequisites check passed"
 }
 
+# shellcheck disable=SC2153  # SSH_PORT and TIMEZONE are set via prompt_input
 collect_configuration() {
     log_info "Collecting configuration..."
 
@@ -191,6 +193,7 @@ harden_ssh_step() {
 configure_ntp_step() {
     log_info "Step 6: Configuring NTP and timezone..."
 
+    # shellcheck disable=SC2153  # TIMEZONE is set via prompt_input in collect_configuration
     configure_ntp "$TIMEZONE"
 }
 
