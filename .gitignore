@@ -9,6 +9,7 @@
 .env.local
 .env.*.local
 *.env
+.creds
 
 # Secrets directory contents
 secrets/
