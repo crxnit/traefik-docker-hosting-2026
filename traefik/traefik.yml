@@ -118,7 +118,7 @@ providers:
 
   # File provider for dynamic configuration
   file:
-    directory: "/etc/traefik/dynamic"
+    directory: "./dynamic"
     watch: true
 
 # =============================================================================
