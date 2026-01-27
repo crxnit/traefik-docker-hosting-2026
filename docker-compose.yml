@@ -80,7 +80,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"  # HTTP/3 (QUIC)
     environment:
       - ACME_EMAIL=${ACME_EMAIL}
       - TRAEFIK_DASHBOARD_DOMAIN=${TRAEFIK_DASHBOARD_DOMAIN}

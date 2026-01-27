@@ -76,10 +76,9 @@ entryPoints:
         - "172.16.0.0/12"
         - "192.168.0.0/16"
 
-  # HTTPS endpoint with HTTP/3 support
+  # HTTPS endpoint
   websecure:
     address: ":443"
-    http3: {}
     http:
       tls:
         certResolver: letsencrypt
@@ -148,9 +147,3 @@ certificatesResolvers:
       httpChallenge:
         entryPoint: web
 
-# =============================================================================
-# Experimental Features
-# =============================================================================
-experimental:
-  # HTTP/3 is now stable in v3.6
-  http3: true
