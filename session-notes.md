@@ -201,11 +201,18 @@ All configuration files reviewed and aligned:
 ### Notes
 
 - HTTP/3 has been disabled per user request
-- Docker socket is accessed directly (`unix:///var/run/docker.sock`), not via socket proxy
-- Socket proxy service exists but is not currently used (see traefik.yml comments)
+- Docker socket proxy is now enabled for enhanced security
+- Traefik connects via `tcp://docker-socket-proxy:2375` instead of direct socket access
 
-### Potential TODOs
+### Dashboard Credentials
 
-- Push latest commit to remote
-- Consider enabling socket proxy for enhanced security
-- Update `dashboard-auth` password hash in security.yml (currently placeholder)
+**Username:** `admin`
+**Password:** `gIZ9NpCsDbJlOFu8m3fA`
+
+⚠️ **Change these credentials in production!**
+
+To generate a new password hash:
+```bash
+htpasswd -nBb admin YOUR_PASSWORD | sed 's/\$/\$\$/g'
+```
+Then update `traefik/dynamic/security.yml`

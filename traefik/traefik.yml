@@ -109,9 +109,7 @@ providers:
   # Docker provider (via socket proxy for security)
   docker:
     # Use socket proxy instead of direct socket access
-    # endpoint: "tcp://docker-socket-proxy:2375"
-    # Fallback to direct socket (less secure but simpler)
-    endpoint: "unix:///var/run/docker.sock"
+    endpoint: "tcp://docker-socket-proxy:2375"
     exposedByDefault: false
     network: traefik-public
     watch: true

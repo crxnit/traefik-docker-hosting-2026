@@ -58,12 +58,12 @@ http:
     # -------------------------------------------------------------------------
     # Basic Authentication
     # -------------------------------------------------------------------------
-    # Generate password: echo $(htpasswd -nB user) | sed -e s/\\$/\\$\\$/g
+    # Generate password: echo $(htpasswd -nBb user password) | sed -e s/\\$/\\$\\$/g
     dashboard-auth:
       basicAuth:
         users:
-          # Default: admin/changeme (CHANGE IN PRODUCTION!)
-          - "admin:$$2y$$10$$placeholder.hash.here"
+          # CHANGE IN PRODUCTION! Current: admin / gIZ9NpCsDbJlOFu8m3fA
+          - "admin:$$2y$$05$$F1XnhHThUrOPmwBB9Kw/9uzQEIcyqKJ2qnk0hDRs9wL5I.GEgn0Pi"
         removeHeader: true
 
     # -------------------------------------------------------------------------
