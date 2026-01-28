@@ -13,7 +13,7 @@ global:
 # =============================================================================
 # Uncomment to enable CrowdSec integration for IP reputation and WAF protection.
 # Requires: CrowdSec service running (see docker-compose-crowdsec.yml)
-# Documentation: traefik/dynamic/crowdsec.md
+# Documentation: docs/crowdsec.md
 #
 # experimental:
 #   plugins:

@@ -5,10 +5,10 @@
 #
 # PREREQUISITES:
 # 1. Enable the CrowdSec plugin in traefik.yml (static config)
-# 2. Deploy the CrowdSec service (see crowdsec.md for instructions)
+# 2. Deploy the CrowdSec service (see docs/crowdsec.md for instructions)
 # 3. Generate a bouncer API key and update crowdsecLapiKey below
 #
-# See crowdsec.md for complete setup instructions.
+# See docs/crowdsec.md for complete setup instructions.
 # =============================================================================
 
 http:
